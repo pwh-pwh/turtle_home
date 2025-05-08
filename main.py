@@ -29,6 +29,17 @@ SMOKE_START_Y = 0
 SMOKE_CREATION_INTERVAL = 5 # Create smoke every N frames
 smoke_frame_count = 0
 
+# --- Global Window Light Details ---
+cabin_window_details = {
+    'x': 0, 'y': 0, 'size': 0,
+    'colors': ["#FFFFE0", "#FFEEB0"], # LightYellow, Slightly dimmer/warmer yellow
+    'current_color_index': 0,
+    'border_color': "black",
+    'pane_color': "saddlebrown"
+}
+WINDOW_FLICKER_INTERVAL = 15 # Flicker every N frames (e.g., 15 frames = 0.75 seconds at 20FPS)
+window_frame_count = 0
+
 
 # --- Helper: Draw a filled rectangle ---
 def draw_filled_rectangle(t, x, y, width, height, border_color, fill_color):
@@ -94,8 +105,21 @@ def draw_cabin(base_x, base_y):
     window_size = 25
     window_x = base_x + cabin_width * 0.7 - window_size / 2
     window_y = base_y + cabin_height * 0.5
-    draw_filled_rectangle(pen, window_x, window_y, window_size, window_size, "black", window_light_color)
-    pen.pencolor("saddlebrown")
+    
+    # Store window details for animation
+    global cabin_window_details # Ensure we are modifying the global dict
+    cabin_window_details['x'] = window_x
+    cabin_window_details['y'] = window_y
+    cabin_window_details['size'] = window_size
+    # cabin_window_details['border_color'] and ['pane_color'] are already set globally
+    # cabin_window_details['colors'] and ['current_color_index'] are also set globally
+
+    # Initial draw of the window using details from the global dict
+    initial_light_color = cabin_window_details['colors'][cabin_window_details['current_color_index']]
+    draw_filled_rectangle(pen, window_x, window_y, window_size, window_size, cabin_window_details['border_color'], initial_light_color)
+    
+    # Window panes
+    pen.pencolor(cabin_window_details['pane_color'])
     pen.goto(window_x + window_size / 2, window_y)
     pen.pendown()
     pen.goto(window_x + window_size / 2, window_y + window_size)
@@ -228,16 +252,60 @@ def draw_ground_plane():
 # --- Animation Loop ---
 def animate_scene():
     global smoke_frame_count, SMOKE_START_X, SMOKE_START_Y
+    global window_frame_count, cabin_window_details
     
+    # Animate Smoke
     smoke_frame_count +=1
     if smoke_frame_count % SMOKE_CREATION_INTERVAL == 0:
         create_smoke_particle(SMOKE_START_X, SMOKE_START_Y)
-        if len(smoke_particles) > 50 : # Limit max particles
+        if len(smoke_particles) > 60 : # Limit max particles slightly more
              smoke_particles.pop(0)
-
-
     update_and_draw_all_smoke()
-    
+
+    # Animate Window Light
+    window_frame_count += 1
+    if window_frame_count % WINDOW_FLICKER_INTERVAL == 0:
+        cabin_window_details['current_color_index'] = 1 - cabin_window_details['current_color_index'] # Toggle 0 and 1
+        new_light_color = cabin_window_details['colors'][cabin_window_details['current_color_index']]
+        
+        w_x = cabin_window_details['x']
+        w_y = cabin_window_details['y']
+        w_size = cabin_window_details['size']
+        
+        # Redraw window light fill
+        # Important: Use the main 'pen' for this as it's part of the static scene structure
+        original_pen_pencolor = pen.pencolor()
+        original_pen_fillcolor = pen.fillcolor()
+        
+        pen.pencolor(new_light_color) # Match border to fill to avoid issues when filling over
+        pen.fillcolor(new_light_color)
+        pen.penup()
+        pen.goto(w_x, w_y)
+        pen.pendown()
+        pen.begin_fill()
+        for _ in range(2): # Draw rectangle path
+            pen.forward(w_size)
+            pen.left(90)
+            pen.forward(w_size)
+            pen.left(90)
+        pen.end_fill()
+        pen.penup()
+        
+        # Redraw window panes over the new fill
+        pen.pencolor(cabin_window_details['pane_color'])
+        pen.penup()
+        pen.goto(w_x + w_size / 2, w_y)
+        pen.pendown()
+        pen.goto(w_x + w_size / 2, w_y + w_size) # Vertical pane
+        pen.penup()
+        pen.goto(w_x, w_y + w_size / 2)
+        pen.pendown()
+        pen.goto(w_x + w_size, w_y + w_size / 2) # Horizontal pane
+        pen.penup()
+
+        pen.pencolor(original_pen_pencolor) # Restore pen's original colors
+        pen.fillcolor(original_pen_fillcolor)
+
     screen.update()
     screen.ontimer(animate_scene, 50) # Approx 20 FPS
 
