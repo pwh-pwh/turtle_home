@@ -79,13 +79,22 @@ COUPLE_SCALE = 0.8   # Scale of the couple
 COUPLE_MOVEMENT_RANGE = 60 # Total range of horizontal movement
 
 # --- Global Text Animation Details ---
-FULL_CAPTION_TEXT = "每一帧，都是生活的小确幸"
+CAPTION_TEXTS = [
+    "每一帧，都是生活的小确幸",
+    "光阴的故事，由我们慢慢书写。",
+    "心有所栖，不惧漂泊。",
+    "世界很大，幸福很小，藏在这屋檐下。",
+    "看庭前花开花落，望天上云卷云舒。"
+]
+current_caption_list_index = 0
 displayed_text = ""
 current_char_index = 0
-TEXT_ANIMATION_INTERVAL = 7 # Frames per character (slower)
+TEXT_ANIMATION_INTERVAL = 5 # Frames per character (slower)
 text_animation_frame_count = 0
 TEXT_Y_POSITION = -SCREEN_HEIGHT / 2 + 30
 TEXT_FONT = ("SimHei", 16, "normal")
+TEXT_HOLD_INTERVAL = 30 # Frames to hold text after full display (5s at 20FPS)
+text_hold_frame_count = 0
 # text_pen is already defined
 
 # --- Helper: Draw a filled rectangle ---
@@ -385,7 +394,7 @@ def animate_scene():
     global window_frame_count, cabin_window_details
     global sun_ray_frame_count, sun_details, sun_effects_pen
     global couple_current_x, couple_current_y, couple_dx, couple_min_x, couple_max_x, couple_pen, COUPLE_SCALE, ground_level_y
-    global text_pen, FULL_CAPTION_TEXT, displayed_text, current_char_index, TEXT_ANIMATION_INTERVAL, text_animation_frame_count, TEXT_Y_POSITION, TEXT_FONT
+    global text_pen, CAPTION_TEXTS, current_caption_list_index, displayed_text, current_char_index, TEXT_ANIMATION_INTERVAL, text_animation_frame_count, TEXT_Y_POSITION, TEXT_FONT, TEXT_HOLD_INTERVAL, text_hold_frame_count
     
     # Animate Smoke
     smoke_frame_count +=1
@@ -478,19 +487,28 @@ def animate_scene():
         draw_holding_hands_couple_silhouette(couple_pen, couple_current_x, couple_current_y, scale=COUPLE_SCALE)
 
     # Animate Text
-    text_animation_frame_count += 1
-    if current_char_index < len(FULL_CAPTION_TEXT):
+    current_full_text_to_display = CAPTION_TEXTS[current_caption_list_index]
+
+    if current_char_index < len(current_full_text_to_display):
+        # Typing out the text
+        text_animation_frame_count += 1
         if text_animation_frame_count % TEXT_ANIMATION_INTERVAL == 0:
-            displayed_text += FULL_CAPTION_TEXT[current_char_index]
+            displayed_text += current_full_text_to_display[current_char_index]
             current_char_index += 1
-            text_pen.clear() # Clear previous text
+            text_pen.clear()
             text_pen.goto(0, TEXT_Y_POSITION)
             text_pen.write(displayed_text, align="center", font=TEXT_FONT)
-    elif not displayed_text: # Ensure text is drawn at least once if interval is 0 or text is short
-        text_pen.goto(0, TEXT_Y_POSITION)
-        text_pen.write(FULL_CAPTION_TEXT, align="center", font=TEXT_FONT)
-        displayed_text = FULL_CAPTION_TEXT # Mark as fully displayed
-
+    elif displayed_text == current_full_text_to_display: # Text is fully displayed, start holding
+        text_hold_frame_count += 1
+        if text_hold_frame_count >= TEXT_HOLD_INTERVAL:
+            # Reset for next loop and switch to next caption
+            current_caption_list_index = (current_caption_list_index + 1) % len(CAPTION_TEXTS)
+            displayed_text = ""
+            current_char_index = 0
+            text_animation_frame_count = 0
+            text_hold_frame_count = 0
+            text_pen.clear()
+    # If displayed_text is empty and current_char_index is 0, it will start typing the new current_full_text_to_display.
 
     screen.update()
     screen.ontimer(animate_scene, 50) # Approx 20 FPS
