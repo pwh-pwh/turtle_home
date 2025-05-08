@@ -32,6 +32,12 @@ couple_pen.speed(0)
 couple_pen.hideturtle()
 couple_pen.penup()
 
+text_pen = turtle.Turtle() # For writing text
+text_pen.speed(0)
+text_pen.hideturtle()
+text_pen.penup()
+text_pen.pencolor("darkslateblue") # Default text color
+
 # --- Global Smoke Particle List ---
 smoke_particles = []
 SMOKE_START_X = 0 # Will be updated after cabin is drawn
@@ -507,6 +513,11 @@ couple_max_x = initial_couple_base_x + COUPLE_MOVEMENT_RANGE / 2
 # couple_dx and COUPLE_SCALE are already defined globally
 
 # Static drawing of couple removed, will be handled by animate_scene
+
+# Add caption text
+caption_text = "每一帧，都是生活的小确幸"
+text_pen.goto(0, -SCREEN_HEIGHT / 2 + 30) # Position at bottom center
+text_pen.write(caption_text, align="center", font=("SimHei", 16, "normal")) # Using SimHei for Chinese characters
 
 screen.update() # Initial draw of static elements
 animate_scene() # Start animation
