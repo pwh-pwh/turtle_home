@@ -1,5 +1,6 @@
 import turtle
 import random
+import colorsys # For color manipulation if needed
 
 # --- Screen Setup ---
 SCREEN_WIDTH = 800
@@ -7,14 +8,27 @@ SCREEN_HEIGHT = 600
 screen = turtle.Screen()
 screen.setup(width=SCREEN_WIDTH, height=SCREEN_HEIGHT)
 screen.bgcolor("#E0F7FA") # Light cyan - a soft sky color
-screen.title("Cozy Cabin with Smoke")
+screen.title("Cozy Cabin with Animated Smoke")
 screen.tracer(0)
 
-# --- Turtle Pen ---
-pen = turtle.Turtle()
+# --- Turtle Pens ---
+pen = turtle.Turtle() # For static elements
 pen.speed(0)
 pen.hideturtle()
 pen.penup()
+
+smoke_pen = turtle.Turtle() # For dynamic smoke
+smoke_pen.speed(0)
+smoke_pen.hideturtle()
+smoke_pen.penup()
+
+# --- Global Smoke Particle List ---
+smoke_particles = []
+SMOKE_START_X = 0 # Will be updated after cabin is drawn
+SMOKE_START_Y = 0
+SMOKE_CREATION_INTERVAL = 5 # Create smoke every N frames
+smoke_frame_count = 0
+
 
 # --- Helper: Draw a filled rectangle ---
 def draw_filled_rectangle(t, x, y, width, height, border_color, fill_color):
@@ -34,66 +48,53 @@ def draw_filled_rectangle(t, x, y, width, height, border_color, fill_color):
 
 # --- Draw Sun ---
 def draw_sun(t, x, y, radius, color):
-    original_heading = t.heading() # Store original heading
+    original_heading = t.heading()
     original_pencolor = t.pencolor()
     original_fillcolor = t.fillcolor()
-    
     t.penup()
-    t.goto(x, y - radius) # Turtle's circle draws from the "bottom" if heading is 0/east
+    t.goto(x, y - radius)
     t.pendown()
     t.pencolor(color)
     t.fillcolor(color)
     t.begin_fill()
     t.circle(radius)
     t.end_fill()
-    
-    t.pencolor(original_pencolor) # Restore original colors
+    t.pencolor(original_pencolor)
     t.fillcolor(original_fillcolor)
-    t.setheading(original_heading) # Restore original heading
+    t.setheading(original_heading)
     t.penup()
+
 # --- Draw Cabin ---
 def draw_cabin(base_x, base_y):
-    wall_color = "#DEB887" # BurlyWood
-    roof_color = "#A0522D" # Sienna
-    door_color = "#8B4513" # SaddleBrown
-    window_light_color = "#FFFFE0" # LightYellow
-    chimney_color = "#8B7355" # DarkKhaki (a bit like brick)
-
+    wall_color = "#DEB887"
+    roof_color = "#A0522D"
+    door_color = "#8B4513"
+    window_light_color = "#FFFFE0"
+    chimney_color = "#8B7355"
     cabin_width = 150
     cabin_height = 100
     roof_height = 60
-    
-    # Walls
     draw_filled_rectangle(pen, base_x, base_y, cabin_width, cabin_height, "black", wall_color)
-
-    # Roof (triangle)
     pen.penup()
-    pen.goto(base_x - 10, base_y + cabin_height) # Start slightly offset for overhang
+    pen.goto(base_x - 10, base_y + cabin_height)
     pen.pendown()
     pen.pencolor("black")
     pen.fillcolor(roof_color)
     pen.begin_fill()
     pen.goto(base_x + cabin_width / 2, base_y + cabin_height + roof_height)
-    pen.goto(base_x + cabin_width + 10, base_y + cabin_height) # Other side overhang
+    pen.goto(base_x + cabin_width + 10, base_y + cabin_height)
     pen.goto(base_x - 10, base_y + cabin_height)
     pen.end_fill()
     pen.penup()
-
-    # Door
     door_width = 30
     door_height = 50
     draw_filled_rectangle(pen, base_x + cabin_width / 2 - door_width / 2, base_y, door_width, door_height, "black", door_color)
-    # Door knob
     pen.goto(base_x + cabin_width / 2 - door_width / 2 + 5, base_y + door_height / 2)
     pen.dot(5, "gold")
-
-
-    # Window
     window_size = 25
     window_x = base_x + cabin_width * 0.7 - window_size / 2
     window_y = base_y + cabin_height * 0.5
     draw_filled_rectangle(pen, window_x, window_y, window_size, window_size, "black", window_light_color)
-    # Window panes
     pen.pencolor("saddlebrown")
     pen.goto(window_x + window_size / 2, window_y)
     pen.pendown()
@@ -103,64 +104,86 @@ def draw_cabin(base_x, base_y):
     pen.pendown()
     pen.goto(window_x + window_size, window_y + window_size / 2)
     pen.penup()
-    
-    # Chimney
     chimney_width = 20
     chimney_height = 35
-    chimney_x = base_x + cabin_width * 0.75
-    chimney_y = base_y + cabin_height + roof_height * 0.5 # Position on the roof slope
-    # Adjust chimney_y based on roof slope:
-    # Roof slope point: (base_x + cabin_width / 2, base_y + cabin_height + roof_height)
-    # Chimney x is chimney_x. Find y on the line from (base_x + cabin_width / 2, top_roof_y) to (base_x + cabin_width + 10, base_y + cabin_height)
-    # Simplified: place it visually plausible
-    roof_top_y = base_y + cabin_height + roof_height
-    roof_right_base_y = base_y + cabin_height
-    # Assuming chimney_x is on the right slope
-    percentage_along_roof_base = (chimney_x - (base_x + cabin_width / 2)) / ((cabin_width / 2) + 10)
-    chimney_base_y_on_roof = roof_top_y - percentage_along_roof_base * roof_height
-    
-    draw_filled_rectangle(pen, chimney_x, chimney_base_y_on_roof, chimney_width, chimney_height, "black", chimney_color)
-    
-    return cabin_width, chimney_x + chimney_width / 2, chimney_base_y_on_roof + chimney_height # Return cabin_width and chimney top center
+    chimney_x_local = cabin_width * 0.75 # Relative to cabin base_x
+    # Simplified chimney y placement
+    chimney_on_roof_y_offset = cabin_height + roof_height * 0.6 
+    draw_filled_rectangle(pen, base_x + chimney_x_local, base_y + chimney_on_roof_y_offset - chimney_height*0.3, chimney_width, chimney_height, "black", chimney_color)
+    return cabin_width, base_x + chimney_x_local + chimney_width / 2, base_y + chimney_on_roof_y_offset + chimney_height*0.7
 
-# --- Draw Smoke ---
-def draw_smoke(start_x, start_y):
-    pen.pencolor("#D3D3D3") # LightGray
-    for i in range(10):
-        radius = 5 + i * 0.8
-        x_offset = random.randint(-5, 5) + i * 0.5 # Slight drift
-        y_offset = i * 8  # Rising up
+# --- Smoke Particle System ---
+def create_smoke_particle(start_x, start_y):
+    particle = {
+        'x': start_x + random.uniform(-2, 2),
+        'y': start_y + random.uniform(-2, 2),
+        'dx': random.uniform(-0.3, 0.3), # Horizontal drift
+        'dy': random.uniform(0.5, 1.2),  # Vertical speed
+        'radius': random.uniform(3, 6),
+        'max_life': random.randint(80, 150), # Frames to live
+        'life': 0, # Current age
+        'initial_alpha': 0.7 # For color
+    }
+    particle['life'] = particle['max_life'] # Start with full life
+    smoke_particles.append(particle)
+
+def update_and_draw_all_smoke():
+    global smoke_particles
+    smoke_pen.clear() # Clear previous frame's smoke
+    
+    new_particles = []
+    for p in smoke_particles:
+        p['x'] += p['dx']
+        p['y'] += p['dy']
+        p['life'] -= 1
         
-        pen.penup()
-        pen.goto(start_x + x_offset, start_y + y_offset)
-        pen.pendown()
-        # Draw a partial circle to make it look like a puff
-        pen.setheading(random.randint(0,360))
-        for _ in range(3): # 3 arcs for a puff
-            pen.circle(radius, 120) 
-            pen.left(60) # Turn to make it less like a full circle
-        pen.penup()
+        if p['life'] > 0:
+            new_particles.append(p)
+            # Calculate alpha (0.0 to 1.0)
+            alpha = (p['life'] / p['max_life']) * p['initial_alpha']
+            alpha = max(0, min(1, alpha)) # Clamp between 0 and 1
+            
+            # Convert alpha to a grayscale color (e.g., (r,g,b) where r=g=b)
+            # Turtle colors are usually strings or (r,g,b) tuples from 0-1 or 0-255
+            # For simplicity, let's use a dot with varying size and a fixed light gray
+            # A more advanced way is to change color from gray to background color
+            
+            # Simple: size decreases, color fixed
+            current_radius = p['radius'] * (p['life'] / p['max_life'])
+            if current_radius > 0.5: # Only draw if reasonably visible
+                smoke_pen.penup()
+                smoke_pen.goto(p['x'], p['y'])
+                # smoke_pen.dot(current_radius * 2, "#E0E0E0") # Light gray dot
+                
+                # Draw puff using circles (like original static smoke)
+                smoke_pen.pencolor(f"#{int(200 + alpha*50):02x}{int(200 + alpha*50):02x}{int(200 + alpha*50):02x}") # Fading gray
+                smoke_pen.pendown()
+                original_heading = smoke_pen.heading()
+                smoke_pen.setheading(random.randint(0,360))
+                for _ in range(3):
+                     smoke_pen.circle(current_radius, 100 + alpha * 20)
+                     smoke_pen.left(50 + alpha * 10)
+                smoke_pen.setheading(original_heading)
+                smoke_pen.penup()
+
+    smoke_particles = new_particles
+
 
 # --- Draw Tree ---
 def draw_tree(base_x, base_y):
-    trunk_color = "#8B4513" # SaddleBrown
-    crown_color = "#228B22" # ForestGreen
-
+    trunk_color = "#8B4513"
+    crown_color = "#228B22"
     trunk_width = 20
     trunk_height = 50
-    
-    # Trunk
-    pen.setheading(0) # Ensure upright trunk before drawing rectangle
+    pen.setheading(0)
     draw_filled_rectangle(pen, base_x - trunk_width / 2, base_y, trunk_width, trunk_height, "black", trunk_color)
-    
-    # Crown (multiple overlapping circles)
     crown_center_x = base_x
     crown_center_y = base_y + trunk_height + 20
-    
+    original_pencolor = pen.pencolor()
+    original_fillcolor = pen.fillcolor()
     pen.pencolor(crown_color)
     pen.fillcolor(crown_color)
-    
-    for _ in range(5): # Draw a few circles for a bushy top
+    for _ in range(5):
         offset_x = random.randint(-15, 15)
         offset_y = random.randint(-10, 10)
         radius = random.randint(20, 35)
@@ -171,65 +194,76 @@ def draw_tree(base_x, base_y):
         pen.circle(radius)
         pen.end_fill()
         pen.penup()
+    pen.pencolor(original_pencolor)
+    pen.fillcolor(original_fillcolor)
+
 
 # --- Draw Fence ---
 def draw_fence(start_x, start_y, num_sections, section_width, post_height):
-    pen.pencolor("#8B4513") # SaddleBrown
+    original_pencolor = pen.pencolor()
+    original_pensize = pen.pensize()
+    pen.pencolor("#8B4513")
     pen.pensize(3)
     for i in range(num_sections + 1):
-        # Draw post
         x = start_x + i * section_width
         pen.penup()
         pen.goto(x, start_y)
         pen.pendown()
         pen.goto(x, start_y + post_height)
-    
-    # Draw horizontal rails (2 rails)
     for j in range(2):
         rail_y = start_y + post_height * (0.3 + j * 0.4)
         pen.penup()
         pen.goto(start_x, rail_y)
         pen.pendown()
         pen.goto(start_x + num_sections * section_width, rail_y)
-    pen.pensize(1) # Reset pensize
+    pen.pensize(original_pensize)
+    pen.pencolor(original_pencolor)
     pen.penup()
 
 # --- Draw Ground ---
 def draw_ground_plane():
-    ground_color = "#90EE90" # LightGreen
+    ground_color = "#90EE90"
     draw_filled_rectangle(pen, -SCREEN_WIDTH / 2, -SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 4, ground_color, ground_color)
 
+# --- Animation Loop ---
+def animate_scene():
+    global smoke_frame_count, SMOKE_START_X, SMOKE_START_Y
+    
+    smoke_frame_count +=1
+    if smoke_frame_count % SMOKE_CREATION_INTERVAL == 0:
+        create_smoke_particle(SMOKE_START_X, SMOKE_START_Y)
+        if len(smoke_particles) > 50 : # Limit max particles
+             smoke_particles.pop(0)
+
+
+    update_and_draw_all_smoke()
+    
+    screen.update()
+    screen.ontimer(animate_scene, 50) # Approx 20 FPS
 
 # --- Main Drawing Logic ---
-# Draw Sun in the top-left corner
 sun_radius = 40
 sun_padding = 30
-sun_x = -SCREEN_WIDTH / 2 + sun_radius + sun_padding
-sun_y = SCREEN_HEIGHT / 2 - sun_radius - sun_padding
-draw_sun(pen, sun_x, sun_y, sun_radius, "gold")
+sun_x_pos = -SCREEN_WIDTH / 2 + sun_radius + sun_padding
+sun_y_pos = SCREEN_HEIGHT / 2 - sun_radius - sun_padding
+draw_sun(pen, sun_x_pos, sun_y_pos, sun_radius, "gold")
 
 ground_level_y = -SCREEN_HEIGHT / 2 + SCREEN_HEIGHT / 4
 draw_ground_plane()
 
-# Cabin
 cabin_base_x = -75
 cabin_base_y = ground_level_y
-cabin_width_drawn, smoke_start_x, smoke_start_y = draw_cabin(cabin_base_x, cabin_base_y)
-draw_smoke(smoke_start_x, smoke_start_y)
+cabin_width_drawn, SMOKE_START_X, SMOKE_START_Y = draw_cabin(cabin_base_x, cabin_base_y)
+# Static smoke call removed
 
-# Trees
 draw_tree(cabin_base_x - 80, ground_level_y)
-# Adjust tree position relative to the drawn cabin width
 draw_tree(cabin_base_x + cabin_width_drawn + 60, ground_level_y)
 
-# Fence
-draw_fence(cabin_base_x - 120, ground_level_y, 5, 30, 40) # Fence to the left
-draw_fence(cabin_base_x + cabin_width_drawn + 20, ground_level_y, 4, 30, 40) # Fence to the right
-
-# Use the returned cabin_width_drawn
+draw_fence(cabin_base_x - 120, ground_level_y, 5, 30, 40)
+draw_fence(cabin_base_x + cabin_width_drawn + 20, ground_level_y, 4, 30, 40)
 draw_fence(cabin_base_x + cabin_width_drawn + 30, ground_level_y, 3, 30, 40)
 
+screen.update() # Initial draw of static elements
+animate_scene() # Start animation
 
-# --- Finalize ---
-screen.update()
 screen.mainloop()
