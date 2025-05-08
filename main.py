@@ -78,6 +78,15 @@ couple_dx = 0.5      # Movement speed and direction (pixels per frame)
 COUPLE_SCALE = 0.8   # Scale of the couple
 COUPLE_MOVEMENT_RANGE = 60 # Total range of horizontal movement
 
+# --- Global Text Animation Details ---
+FULL_CAPTION_TEXT = "每一帧，都是生活的小确幸"
+displayed_text = ""
+current_char_index = 0
+TEXT_ANIMATION_INTERVAL = 7 # Frames per character (slower)
+text_animation_frame_count = 0
+TEXT_Y_POSITION = -SCREEN_HEIGHT / 2 + 30
+TEXT_FONT = ("SimHei", 16, "normal")
+# text_pen is already defined
 
 # --- Helper: Draw a filled rectangle ---
 def draw_filled_rectangle(t, x, y, width, height, border_color, fill_color):
@@ -375,7 +384,8 @@ def animate_scene():
     global smoke_frame_count, SMOKE_START_X, SMOKE_START_Y
     global window_frame_count, cabin_window_details
     global sun_ray_frame_count, sun_details, sun_effects_pen
-    global couple_current_x, couple_current_y, couple_dx, couple_min_x, couple_max_x, couple_pen, COUPLE_SCALE, ground_level_y # Added ground_level_y for safety
+    global couple_current_x, couple_current_y, couple_dx, couple_min_x, couple_max_x, couple_pen, COUPLE_SCALE, ground_level_y
+    global text_pen, FULL_CAPTION_TEXT, displayed_text, current_char_index, TEXT_ANIMATION_INTERVAL, text_animation_frame_count, TEXT_Y_POSITION, TEXT_FONT
     
     # Animate Smoke
     smoke_frame_count +=1
@@ -467,6 +477,21 @@ def animate_scene():
         # It's better to pass ground_level_y or ensure it's globally accessible and set before animation starts
         draw_holding_hands_couple_silhouette(couple_pen, couple_current_x, couple_current_y, scale=COUPLE_SCALE)
 
+    # Animate Text
+    text_animation_frame_count += 1
+    if current_char_index < len(FULL_CAPTION_TEXT):
+        if text_animation_frame_count % TEXT_ANIMATION_INTERVAL == 0:
+            displayed_text += FULL_CAPTION_TEXT[current_char_index]
+            current_char_index += 1
+            text_pen.clear() # Clear previous text
+            text_pen.goto(0, TEXT_Y_POSITION)
+            text_pen.write(displayed_text, align="center", font=TEXT_FONT)
+    elif not displayed_text: # Ensure text is drawn at least once if interval is 0 or text is short
+        text_pen.goto(0, TEXT_Y_POSITION)
+        text_pen.write(FULL_CAPTION_TEXT, align="center", font=TEXT_FONT)
+        displayed_text = FULL_CAPTION_TEXT # Mark as fully displayed
+
+
     screen.update()
     screen.ontimer(animate_scene, 50) # Approx 20 FPS
 
@@ -514,10 +539,7 @@ couple_max_x = initial_couple_base_x + COUPLE_MOVEMENT_RANGE / 2
 
 # Static drawing of couple removed, will be handled by animate_scene
 
-# Add caption text
-caption_text = "每一帧，都是生活的小确幸"
-text_pen.goto(0, -SCREEN_HEIGHT / 2 + 30) # Position at bottom center
-text_pen.write(caption_text, align="center", font=("SimHei", 16, "normal")) # Using SimHei for Chinese characters
+# Static caption text drawing removed, handled by animate_scene
 
 screen.update() # Initial draw of static elements
 animate_scene() # Start animation
