@@ -32,6 +32,25 @@ def draw_filled_rectangle(t, x, y, width, height, border_color, fill_color):
     t.end_fill()
     t.penup()
 
+# --- Draw Sun ---
+def draw_sun(t, x, y, radius, color):
+    original_heading = t.heading() # Store original heading
+    original_pencolor = t.pencolor()
+    original_fillcolor = t.fillcolor()
+    
+    t.penup()
+    t.goto(x, y - radius) # Turtle's circle draws from the "bottom" if heading is 0/east
+    t.pendown()
+    t.pencolor(color)
+    t.fillcolor(color)
+    t.begin_fill()
+    t.circle(radius)
+    t.end_fill()
+    
+    t.pencolor(original_pencolor) # Restore original colors
+    t.fillcolor(original_fillcolor)
+    t.setheading(original_heading) # Restore original heading
+    t.penup()
 # --- Draw Cabin ---
 def draw_cabin(base_x, base_y):
     wall_color = "#DEB887" # BurlyWood
@@ -182,6 +201,13 @@ def draw_ground_plane():
 
 
 # --- Main Drawing Logic ---
+# Draw Sun in the top-left corner
+sun_radius = 40
+sun_padding = 30
+sun_x = -SCREEN_WIDTH / 2 + sun_radius + sun_padding
+sun_y = SCREEN_HEIGHT / 2 - sun_radius - sun_padding
+draw_sun(pen, sun_x, sun_y, sun_radius, "gold")
+
 ground_level_y = -SCREEN_HEIGHT / 2 + SCREEN_HEIGHT / 4
 draw_ground_plane()
 
