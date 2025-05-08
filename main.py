@@ -27,6 +27,11 @@ sun_effects_pen.speed(0)
 sun_effects_pen.hideturtle()
 sun_effects_pen.penup()
 
+couple_pen = turtle.Turtle() # For the moving couple
+couple_pen.speed(0)
+couple_pen.hideturtle()
+couple_pen.penup()
+
 # --- Global Smoke Particle List ---
 smoke_particles = []
 SMOKE_START_X = 0 # Will be updated after cabin is drawn
@@ -56,6 +61,16 @@ sun_details = {
 }
 SUN_RAY_FLICKER_INTERVAL = 8 # Flicker rays every N frames
 sun_ray_frame_count = 0
+
+# --- Global Couple Animation Details ---
+# couple_pen is defined with other pens now
+couple_current_x = 0 # Will be initialized in main logic
+couple_current_y = 0 # Will be ground_level_y
+couple_min_x = 0     # Movement range min X
+couple_max_x = 0     # Movement range max X
+couple_dx = 0.5      # Movement speed and direction (pixels per frame)
+COUPLE_SCALE = 0.8   # Scale of the couple
+COUPLE_MOVEMENT_RANGE = 60 # Total range of horizontal movement
 
 
 # --- Helper: Draw a filled rectangle ---
@@ -354,6 +369,7 @@ def animate_scene():
     global smoke_frame_count, SMOKE_START_X, SMOKE_START_Y
     global window_frame_count, cabin_window_details
     global sun_ray_frame_count, sun_details, sun_effects_pen
+    global couple_current_x, couple_current_y, couple_dx, couple_min_x, couple_max_x, couple_pen, COUPLE_SCALE, ground_level_y # Added ground_level_y for safety
     
     # Animate Smoke
     smoke_frame_count +=1
@@ -434,6 +450,17 @@ def animate_scene():
             sun_effects_pen.forward(actual_ray_length)
         sun_effects_pen.penup()
 
+    # Animate Couple
+    if couple_min_x != couple_max_x: # Only animate if range is set
+        couple_pen.clear()
+        couple_current_x += couple_dx
+        if couple_current_x >= couple_max_x or couple_current_x <= couple_min_x:
+            couple_dx *= -1 # Reverse direction
+        
+        # Ensure couple_current_y is set (it should be from main logic init)
+        # It's better to pass ground_level_y or ensure it's globally accessible and set before animation starts
+        draw_holding_hands_couple_silhouette(couple_pen, couple_current_x, couple_current_y, scale=COUPLE_SCALE)
+
     screen.update()
     screen.ontimer(animate_scene, 50) # Approx 20 FPS
 
@@ -469,10 +496,17 @@ last_fence_sections = 3
 last_fence_section_width = 30
 draw_fence(last_fence_start_x, ground_level_y, last_fence_sections, last_fence_section_width, 40)
 
-# Draw holding hands couple silhouette
-# Position after the last fence on the right + some spacing
-couple_base_x = last_fence_start_x + (last_fence_sections * last_fence_section_width) + 70
-draw_holding_hands_couple_silhouette(pen, couple_base_x, ground_level_y, scale=0.8)
+# Initialize Couple Animation Parameters
+# couple_current_y is already global, ensure it's set if not passed to animate_scene
+# We use the global ground_level_y which is set before this.
+couple_current_y = ground_level_y
+initial_couple_base_x = last_fence_start_x + (last_fence_sections * last_fence_section_width) + 70
+couple_current_x = initial_couple_base_x
+couple_min_x = initial_couple_base_x - COUPLE_MOVEMENT_RANGE / 2
+couple_max_x = initial_couple_base_x + COUPLE_MOVEMENT_RANGE / 2
+# couple_dx and COUPLE_SCALE are already defined globally
+
+# Static drawing of couple removed, will be handled by animate_scene
 
 screen.update() # Initial draw of static elements
 animate_scene() # Start animation
