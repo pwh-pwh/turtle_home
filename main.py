@@ -8,7 +8,7 @@ SCREEN_HEIGHT = 600
 screen = turtle.Screen()
 screen.setup(width=SCREEN_WIDTH, height=SCREEN_HEIGHT)
 screen.bgcolor("#E0F7FA") # Light cyan - a soft sky color
-screen.title("Cozy Cabin with Animated Smoke")
+screen.title("爱是日常，也是远方")
 screen.tracer(0)
 
 # --- Turtle Pens ---
