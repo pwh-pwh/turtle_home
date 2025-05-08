@@ -22,6 +22,11 @@ smoke_pen.speed(0)
 smoke_pen.hideturtle()
 smoke_pen.penup()
 
+sun_effects_pen = turtle.Turtle() # For sun rays
+sun_effects_pen.speed(0)
+sun_effects_pen.hideturtle()
+sun_effects_pen.penup()
+
 # --- Global Smoke Particle List ---
 smoke_particles = []
 SMOKE_START_X = 0 # Will be updated after cabin is drawn
@@ -39,6 +44,18 @@ cabin_window_details = {
 }
 WINDOW_FLICKER_INTERVAL = 15 # Flicker every N frames (e.g., 15 frames = 0.75 seconds at 20FPS)
 window_frame_count = 0
+
+# --- Global Sun Details for Animation ---
+sun_details = {
+    'x': 0, 'y': 0, 'radius': 0, 'color': "gold", # Will be populated
+    'ray_color': "#FFFFA0", # Light yellow for rays
+    'num_rays': 12,
+    'ray_length_short': 7,
+    'ray_length_long': 12,
+    'current_ray_length': 12
+}
+SUN_RAY_FLICKER_INTERVAL = 8 # Flicker rays every N frames
+sun_ray_frame_count = 0
 
 
 # --- Helper: Draw a filled rectangle ---
@@ -253,6 +270,7 @@ def draw_ground_plane():
 def animate_scene():
     global smoke_frame_count, SMOKE_START_X, SMOKE_START_Y
     global window_frame_count, cabin_window_details
+    global sun_ray_frame_count, sun_details, sun_effects_pen
     
     # Animate Smoke
     smoke_frame_count +=1
@@ -306,6 +324,33 @@ def animate_scene():
         pen.pencolor(original_pen_pencolor) # Restore pen's original colors
         pen.fillcolor(original_pen_fillcolor)
 
+    # Animate Sun Rays
+    sun_effects_pen.clear() # Clear previous rays
+    sun_ray_frame_count += 1
+    if sun_ray_frame_count % SUN_RAY_FLICKER_INTERVAL == 0:
+        if sun_details['current_ray_length'] == sun_details['ray_length_long']:
+            sun_details['current_ray_length'] = sun_details['ray_length_short']
+        else:
+            sun_details['current_ray_length'] = sun_details['ray_length_long']
+
+    if sun_details['radius'] > 0: # Only draw if sun is initialized
+        num_rays = sun_details['num_rays']
+        actual_ray_length = sun_details['current_ray_length']
+        sun_center_x = sun_details['x']
+        sun_center_y = sun_details['y']
+        
+        sun_effects_pen.pencolor(sun_details['ray_color'])
+        sun_effects_pen.pensize(2)
+        for i in range(num_rays):
+            angle = (360 / num_rays) * i + (sun_ray_frame_count % (360 // num_rays)) # Slight rotation effect
+            sun_effects_pen.penup()
+            sun_effects_pen.goto(sun_center_x, sun_center_y)
+            sun_effects_pen.setheading(angle)
+            sun_effects_pen.forward(sun_details['radius'] * 0.8) # Start rays slightly inside the sun for better look
+            sun_effects_pen.pendown()
+            sun_effects_pen.forward(actual_ray_length)
+        sun_effects_pen.penup()
+
     screen.update()
     screen.ontimer(animate_scene, 50) # Approx 20 FPS
 
@@ -315,6 +360,12 @@ sun_padding = 30
 sun_x_pos = -SCREEN_WIDTH / 2 + sun_radius + sun_padding
 sun_y_pos = SCREEN_HEIGHT / 2 - sun_radius - sun_padding
 draw_sun(pen, sun_x_pos, sun_y_pos, sun_radius, "gold")
+# Populate sun_details (note: sun_y_pos is the top-left reference for draw_sun, actual center is y_pos)
+sun_details['x'] = sun_x_pos
+sun_details['y'] = sun_y_pos
+sun_details['radius'] = sun_radius
+sun_details['color'] = "gold"
+
 
 ground_level_y = -SCREEN_HEIGHT / 2 + SCREEN_HEIGHT / 4
 draw_ground_plane()
