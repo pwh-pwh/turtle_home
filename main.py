@@ -261,6 +261,89 @@ def draw_fence(start_x, start_y, num_sections, section_width, post_height):
     pen.pencolor(original_pencolor)
     pen.penup()
 
+# --- Draw Holding Hands Couple Silhouette ---
+def draw_holding_hands_couple_silhouette(t, base_x, base_y, scale=1.0, color="black"):
+    t.penup()
+    t.pencolor(color)
+    t.pensize(2 * scale) # Make lines a bit thicker based on scale
+
+    # Dimensions for stick figures
+    head_radius = 8 * scale
+    body_height = 30 * scale
+    arm_length = 15 * scale
+    leg_length = 20 * scale
+    person_spacing = 22 * scale # Increased space between people to prevent head overlap (was 15)
+
+    # --- Helper to draw one stick person ---
+    def draw_stick_person(person_center_x, person_base_y, is_left_person):
+        # Head
+        t.penup()
+        t.goto(person_center_x, person_base_y + body_height + head_radius) # Center of head
+        t.pendown()
+        t.circle(head_radius)
+
+        # Body
+        neck_y = person_base_y + body_height
+        t.penup()
+        t.goto(person_center_x, neck_y)
+        t.pendown()
+        t.goto(person_center_x, person_base_y) # Body line down to base
+
+        # Legs
+        leg_angle = 30 # Angle from vertical
+        # Left leg
+        t.penup()
+        t.goto(person_center_x, person_base_y)
+        t.pendown()
+        t.setheading(270 - leg_angle) # Down-left
+        t.forward(leg_length)
+        # Right leg
+        t.penup()
+        t.goto(person_center_x, person_base_y)
+        t.pendown()
+        t.setheading(270 + leg_angle) # Down-right
+        t.forward(leg_length)
+
+        # Arms
+        shoulder_y = person_base_y + body_height * 0.75
+        # Outer arm
+        t.penup()
+        t.goto(person_center_x, shoulder_y)
+        t.pendown()
+        if is_left_person:
+            t.setheading(180 + 45) # Out and down-left
+        else:
+            t.setheading(0 - 45)   # Out and down-right
+        t.forward(arm_length * 0.8) # Outer arm slightly shorter
+
+        # Inner arm (for holding hands)
+        t.penup()
+        t.goto(person_center_x, shoulder_y)
+        t.pendown()
+        if is_left_person:
+            t.setheading(0) # Straight right
+        else:
+            t.setheading(180) # Straight left
+        t.forward(arm_length / 2) # Arm reaches halfway to the center
+        return t.pos() # Return hand position
+
+    # --- Draw the two people ---
+    p1_center_x = base_x - person_spacing / 2
+    p2_center_x = base_x + person_spacing / 2
+
+    hand_pos1 = draw_stick_person(p1_center_x, base_y, True)
+    hand_pos2 = draw_stick_person(p2_center_x, base_y, False)
+
+    # Connect hands (optional, if they don't meet perfectly)
+    # For stick figures, just having arms point to each other is often enough
+    # If a direct line is desired:
+    # t.penup()
+    # t.goto(hand_pos1)
+    # t.pendown()
+    # t.goto(hand_pos2)
+    
+    t.penup()
+    t.pensize(1) # Reset pensize
 # --- Draw Ground ---
 def draw_ground_plane():
     ground_color = "#90EE90"
@@ -380,7 +463,16 @@ draw_tree(cabin_base_x + cabin_width_drawn + 60, ground_level_y)
 
 draw_fence(cabin_base_x - 120, ground_level_y, 5, 30, 40)
 draw_fence(cabin_base_x + cabin_width_drawn + 20, ground_level_y, 4, 30, 40)
-draw_fence(cabin_base_x + cabin_width_drawn + 30, ground_level_y, 3, 30, 40)
+
+last_fence_start_x = cabin_base_x + cabin_width_drawn + 30
+last_fence_sections = 3
+last_fence_section_width = 30
+draw_fence(last_fence_start_x, ground_level_y, last_fence_sections, last_fence_section_width, 40)
+
+# Draw holding hands couple silhouette
+# Position after the last fence on the right + some spacing
+couple_base_x = last_fence_start_x + (last_fence_sections * last_fence_section_width) + 70
+draw_holding_hands_couple_silhouette(pen, couple_base_x, ground_level_y, scale=0.8)
 
 screen.update() # Initial draw of static elements
 animate_scene() # Start animation
